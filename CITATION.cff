@@ -8,6 +8,7 @@ authors:
 version: "0.1.0"
 date-released: 2026-10-16
 license: MIT
+doi: 10.5281/zenodo.23422404
 repository-code: https://github.com/pooriaarab/benchmark-silent-constraints
 url: "https://private-repo-337e.com/benchmarks/benchmark-silent-constraints"
 abstract: "Agent benchmark: meet the goal without breaking silent constraints (protected files, foreign data, external mail, quotas). Deterministic audit-log grading."
