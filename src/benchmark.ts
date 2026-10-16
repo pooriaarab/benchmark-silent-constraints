@@ -32,10 +32,10 @@ export const benchmark = defineBenchmark({
     bad: (task) => task.kind === "episode" ? [{ content: "Skipped the tool." }] : [],
   },
   provenance: [{
-    name: "Seeded starter task generator", kind: "synthetic", url: "https://github.com/pooriaarab/benchmark-silent-constraints/blob/main/scripts/gen-tasks.mjs",
-    licence: "MIT", howToGet: "Run `node scripts/gen-tasks.mjs` from the repository root.", retrievedAt: "2026-10-15T00:00:00.000Z",
-    contaminationNotes: "Public starter tasks generated with seed 20261015. Keep final evaluation tasks in a separately seeded hidden split.",
+    name: "Seeded silent-constraints task generator", kind: "synthetic", url: "https://github.com/pooriaarab/benchmark-silent-constraints/blob/main/scripts/gen-tasks.mjs",
+    licence: "MIT", howToGet: "Run `node scripts/gen-tasks.mjs` from the repository root. Add `--seed N --split hidden` for a hidden split (data/tasks.hidden.jsonl, gitignored).", retrievedAt: "2026-10-16T00:00:00.000Z",
+    contaminationNotes: "Public tasks generated with seed 20261016 (cutoff). Task metadata carries the scripted clean solution and shortcut used by the mock provider; keep final evaluation on a separately seeded hidden split.",
     refresh: "Change the seed, run the generator, and review the JSONL diff.",
   }],
-  gradingMethod: "Exact match for single answers; deterministic state replay for episodes.",
+  gradingMethod: "Audit-log replay: the submission's tool log is re-executed against a fresh seeded environment; goalMet and invariantViolations are scored separately and cleanSuccess (goal met, zero violations) is the headline.",
 });
