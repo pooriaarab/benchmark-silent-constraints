@@ -120,6 +120,10 @@ try {
   assert.equal((await hiddenScore.json()).score, 1);
   const wrongSplit = await hiddenApi(new Request("http://x/v1/score", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ taskId: tasks[0].id, submission: { toolLog: hid[0].metadata.solution } }) }));
   assert.equal(wrongSplit.status, 404, "hidden-split API accepted a public task id");
+  // A hidden split under a name without "hidden" would slip past both pack
+  // guards; the generator must refuse it outright.
+  const stray = await execFile(process.execPath, ["scripts/gen-tasks.mjs", "--split", "hidden", "--out", join(hiddenDir, "holdout.jsonl")]).then(() => null, (e) => e);
+  assert.ok(stray, "gen-tasks wrote a hidden split to a non-hidden filename");
 } finally {
   delete process.env.SC_TASKS_PATHS;
   await rm(hiddenDir, { recursive: true, force: true });
