@@ -20,6 +20,7 @@ All notable changes to `benchmark-silent-constraints` are recorded here. The for
 - E2e score-file fixture writes inside a private `mkdtemp` directory instead of a pid-derived tmp path.
 - `resolveTasksPath` compares real paths, so a symlink inside the package or an allow-listed dir can no longer escape the tasks-path boundary.
 - The `score` command validates submission shape and enforces the `MAX_TOOL_LOG_ENTRIES` cap the API and MCP apply; report printing strips control characters from file- or model-supplied text (including grader-produced reasons) before it reaches a terminal.
+- `share_protected` replays file contents through the trace, so sharing or attaching a copy, move or rewrite holding a protected file's bytes is a violation even at an internal address; an overwritten copy is not.
 - `docs/grading.md` now records that `mail_internal` and the attach arm of `share_protected` audit refused attempts, and the README limits note matches.
 - README sample output replaced with the real mock run and pinned by an E2E check (`…` lines are wildcards); the invariants table lists `fs_scope` and `mail_scope` and is checked against the grader's cases so it cannot drift.
 
