@@ -2,7 +2,7 @@
 import { readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { bootstrapCI, createCli, mockAdapter, openaiCompatAdapter, openrouterAdapter, renderMarkdown, type ModelAdapter, type RunOptions } from "benchmark-core";
+import { bootstrapCI, createCli, MAX_TOOL_LOG_ENTRIES, mockAdapter, openaiCompatAdapter, openrouterAdapter, renderMarkdown, type ModelAdapter, type RunOptions } from "benchmark-core";
 import { createBenchmark } from "./benchmark.js";
 import { mcpFor } from "./mcp.js";
 import { gradingSummary, runWithDetails, type DetailedReport, type DetailedRow } from "./report.js";
@@ -19,6 +19,14 @@ if (i >= 0) {
     argv.splice(i, 2);
   }
 }
+
+// A scored report file is untrusted: strip C0/C1 control characters (ANSI
+// escapes) from anything echoed to the terminal or spread into output.
+const stripCtl = <T>(value: T): T =>
+  typeof value === "string" ? value.replace(/[\u0000-\u001F\u007F-\u009F]/g, "?") as T
+  : Array.isArray(value) ? value.map(stripCtl) as T
+  : value !== null && typeof value === "object" ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, stripCtl(v)])) as T
+  : value;
 
 const bench = createBenchmark(tasksPath);
 const printReport = (report: DetailedReport, json: boolean) => {
@@ -58,14 +66,21 @@ async function main(): Promise<number> {
     const original = JSON.parse(await readFile(file, "utf8"));
     if (!Array.isArray(original?.rows)) { console.error("File is not a run report."); return 1; }
     const rows: DetailedRow[] = [];
+    const seed = typeof original.seed === "number" ? { seed: original.seed } : {};
     for (const row of original.rows) {
+      const sub = row?.submission;
+      const invalid = typeof row?.taskId !== "string" || sub === null || typeof sub !== "object" || Array.isArray(sub)
+        || (sub.answer !== undefined && typeof sub.answer !== "string")
+        || (sub.toolLog !== undefined && !Array.isArray(sub.toolLog))
+        || (Array.isArray(sub.toolLog) && sub.toolLog.length > MAX_TOOL_LOG_ENTRIES);
+      if (invalid) { console.error("File row has no usable taskId or submission."); return 1; }
       const task = await bench.getTask(row.taskId);
-      if (!task || row.submission === undefined) { console.error(`Cannot score task ${row.taskId}.`); return 1; }
-      const grade = await bench.score(task, row.submission, { seed: original.seed });
-      rows.push({ ...row, score: grade.score, reason: grade.reason, details: grade.details });
+      if (!task) { console.error(`Cannot score task ${stripCtl(row.taskId)}.`); return 1; }
+      const grade = await bench.score(task, sub, seed);
+      rows.push({ ...stripCtl(row), score: grade.score, reason: grade.reason, details: grade.details });
     }
     const scores = rows.map((r) => r.score);
-    const report: DetailedReport = { ...original, rows, mean: scores.reduce((a, b) => a + b, 0) / scores.length, confidenceInterval95: bootstrapCI(scores, original.seed), grading: gradingSummary(rows) };
+    const report: DetailedReport = { ...stripCtl(original), rows, mean: scores.reduce((a, b) => a + b, 0) / scores.length, confidenceInterval95: bootstrapCI(scores, original.seed), grading: gradingSummary(rows) };
     printReport(report, json);
     return 0;
   }
