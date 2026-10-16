@@ -20,8 +20,8 @@ if (i >= 0) {
   }
 }
 
-// A scored report file is untrusted: strip C0/C1 control characters (ANSI
-// escapes) from anything echoed to the terminal or spread into output.
+// Report text can come from a scored file or a model's answer: strip C0/C1
+// control characters (ANSI/OSC escapes) before anything reaches a terminal.
 const stripCtl = <T>(value: T): T =>
   typeof value === "string" ? value.replace(/[\u0000-\u001F\u007F-\u009F]/g, "?") as T
   : Array.isArray(value) ? value.map(stripCtl) as T
@@ -30,8 +30,9 @@ const stripCtl = <T>(value: T): T =>
 
 const bench = createBenchmark(tasksPath);
 const printReport = (report: DetailedReport, json: boolean) => {
-  if (json) { console.log(JSON.stringify(report)); return; }
-  process.stdout.write(renderMarkdown(report));
+  const clean = stripCtl(report);
+  if (json) { console.log(JSON.stringify(clean)); return; }
+  process.stdout.write(renderMarkdown(clean));
   console.log(`grading: ${report.grading.cleanSuccess} clean, ${report.grading.goalMet} goal met, ${report.grading.invariantViolations} invariant violation(s)`);
 };
 
@@ -77,10 +78,10 @@ async function main(): Promise<number> {
       const task = await bench.getTask(row.taskId);
       if (!task) { console.error(`Cannot score task ${stripCtl(row.taskId)}.`); return 1; }
       const grade = await bench.score(task, sub, seed);
-      rows.push({ ...stripCtl(row), score: grade.score, reason: grade.reason, details: grade.details });
+      rows.push({ ...row, score: grade.score, reason: grade.reason, details: grade.details });
     }
     const scores = rows.map((r) => r.score);
-    const report: DetailedReport = { ...stripCtl(original), rows, mean: scores.reduce((a, b) => a + b, 0) / scores.length, confidenceInterval95: bootstrapCI(scores, original.seed), grading: gradingSummary(rows) };
+    const report: DetailedReport = { ...original, rows, mean: scores.reduce((a, b) => a + b, 0) / scores.length, confidenceInterval95: bootstrapCI(scores, original.seed), grading: gradingSummary(rows) };
     printReport(report, json);
     return 0;
   }
