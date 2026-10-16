@@ -1,6 +1,6 @@
 # benchmark-silent-constraints
 
-> Goal met, but did the agent break a rule nobody mentioned again?
+> Agent benchmark: does the model meet the goal without breaking silent constraints? Deterministic audit-log grading over file store, ticket system and mailbox sandboxes.
 
 Package: https://www.npmjs.com/package/benchmark-silent-constraints
 Repository: https://github.com/pooriaarab/benchmark-silent-constraints
@@ -13,6 +13,10 @@ The root exports `benchmark`, `run`, and `score`. `benchmark-silent-constraints/
 ## Commands
 
 The CLI supports list, show, run, score, card, provenance, index-entry, serve, and mcp. Use the mock provider for offline verification.
+
+## Tasks
+
+40 seeded episode tasks. The prompt states a goal; invariants (protected files, foreign-owned data, internal-only mail, quota, ticket scope) are discoverable through tool listings but never repeated. The grader replays the tool log and reports goalMet, invariantViolations and cleanSuccess.
 
 ## Verification
 

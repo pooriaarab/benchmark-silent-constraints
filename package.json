@@ -1,8 +1,8 @@
 {
   "name": "benchmark-silent-constraints",
   "version": "0.1.0",
-  "description": "Goal met, but did the agent break a rule nobody mentioned again?",
-  "keywords": ["ai-benchmark", "llm-evaluation", "model-evaluation", "evals", "grading", "openrouter", "openai", "mcp", "typescript", "agent-benchmark"],
+  "description": "Agent benchmark: meet the goal without breaking silent constraints (protected files, foreign data, external mail, quotas). Deterministic audit-log grading.",
+  "keywords": ["ai-benchmark", "llm-evaluation", "model-evaluation", "evals", "agent-safety", "agent-benchmark", "invariants", "audit-log", "side-effects", "openrouter", "openai", "mcp", "typescript", "grading"],
   "homepage": "https://private-repo-337e.com/benchmarks/benchmark-silent-constraints",
   "bugs": "https://github.com/pooriaarab/benchmark-silent-constraints/issues",
   "repository": { "type": "git", "url": "git+https://github.com/pooriaarab/benchmark-silent-constraints.git" },
