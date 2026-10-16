@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { execFile as execFileCallback, spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer as createNetServer } from "node:net";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -88,15 +90,31 @@ for (const task of tasks) {
   blanketViolations++;
 }
 
-// A hidden split must diverge structurally and run through --tasks.
-await execFile(process.execPath, ["scripts/gen-tasks.mjs", "--seed", "7", "--split", "hidden"]);
-const hid = (await readFile("data/tasks.hidden.jsonl", "utf8")).trim().split("\n").map((l) => JSON.parse(l));
+// A hidden split must diverge structurally and run through --tasks. It is
+// written to tmpdir so e2e never overwrites a real data/tasks.hidden.jsonl.
+const hiddenPath = join(tmpdir(), `sc-tasks-hidden-${process.pid}.jsonl`);
+await execFile(process.execPath, ["scripts/gen-tasks.mjs", "--seed", "7", "--split", "hidden", "--out", hiddenPath]);
+const hid = (await readFile(hiddenPath, "utf8")).trim().split("\n").map((l) => JSON.parse(l));
 assert.equal(hid.length, tasks.length);
 const samePrompt = hid.filter((t) => tasks.some((p) => p.prompt === t.prompt)).length;
 const sameSolution = hid.filter((t) => tasks.some((p) => JSON.stringify(p.metadata.solution) === JSON.stringify(t.metadata.solution))).length;
 assert.ok(samePrompt <= 5 && sameSolution <= 5, `hidden split reuses ${samePrompt} prompts and ${sameSolution} solutions`);
-const hiddenCli = await execFile(process.execPath, ["dist/cli.js", "run", "--model", "offline", "--provider", "mock", "--tasks", "data/tasks.hidden.jsonl", "--json"], { maxBuffer: 1_000_000 });
+const hiddenCli = await execFile(process.execPath, ["dist/cli.js", "run", "--model", "offline", "--provider", "mock", "--tasks", hiddenPath, "--json"], { maxBuffer: 1_000_000 });
 assert.equal(JSON.parse(hiddenCli.stdout).rows.length, 40);
+
+// With fixtures on disk, the published tarball must never contain a hidden
+// split. Plant canaries the files field must exclude, then pack and reject
+// any listed path containing "hidden".
+const canaries = ["data/e2e-canary.hidden.jsonl", "data/.e2e-hidden"];
+try {
+  for (const c of canaries) await writeFile(c, "canary\n");
+  const packed = JSON.parse((await execFile("npm", ["pack", "--dry-run", "--json"], { maxBuffer: 5_000_000 })).stdout);
+  const packedPaths = (Array.isArray(packed) ? packed : [packed]).flatMap((p) => (p.files ?? []).map((f) => f.path));
+  const leaked = packedPaths.filter((p) => p.toLowerCase().includes("hidden"));
+  assert.equal(leaked.length, 0, `hidden file(s) leaked into pack: ${leaked.join(", ")}`);
+} finally {
+  for (const c of canaries) await unlink(c).catch(() => {});
+}
 
 // Synthetic probes pin each new grader path through score(): the scope
 // invariants, the comment-only exemption, and address parsing.

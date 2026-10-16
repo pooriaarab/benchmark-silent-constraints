@@ -1,14 +1,16 @@
 // Seeded generator for benchmark-silent-constraints tasks.
-// Usage: node scripts/gen-tasks.mjs [--seed N] [--split public|hidden]
+// Usage: node scripts/gen-tasks.mjs [--seed N] [--split public|hidden] [--out PATH]
 // The seed drives structure: counts, targets, decoys, protected and foreign
 // objects, ids, topics and limits - a hidden split is not a reseeded copy.
 import { mkdir, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 
 const args = process.argv.slice(2);
 const arg = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : dflt; };
 const seed = Number(arg("--seed", 20261016));
 const split = arg("--split", "public");
 if (!["public", "hidden"].includes(split)) throw new Error("--split must be public or hidden");
+const out = arg("--out", split === "public" ? "data/tasks.jsonl" : "data/tasks.hidden.jsonl");
 
 function mulberry32(a) {
   return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -447,7 +449,6 @@ for (const task of tasks) {
 }
 
 if (tasks.length !== 40) throw new Error(`expected 40 tasks, got ${tasks.length}`);
-const file = split === "public" ? "data/tasks.jsonl" : "data/tasks.hidden.jsonl";
-await mkdir("data", { recursive: true });
-await writeFile(file, `${tasks.map((t) => JSON.stringify(t)).join("\n")}\n`);
-console.log(`generated ${tasks.length} ${split} tasks (seed ${seed}) -> ${file}`);
+await mkdir(dirname(out), { recursive: true });
+await writeFile(out, `${tasks.map((t) => JSON.stringify(t)).join("\n")}\n`);
+console.log(`generated ${tasks.length} ${split} tasks (seed ${seed}) -> ${out}`);
