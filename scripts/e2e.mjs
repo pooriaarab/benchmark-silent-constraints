@@ -31,6 +31,30 @@ for (const task of tasks) {
 }
 assert.ok(goalMetButViolated > tasks.length / 2, "most shortcuts should meet the goal while violating");
 
+// Provider tool APIs (OpenAI, Gemini) reject loose schemas: every array needs
+// items, every object needs properties, recursively.
+const checkSchema = (node, where) => {
+  if (!node || typeof node !== "object") return;
+  if (node.type === "array") {
+    assert.ok(node.items, `${where}: array schema has no items`);
+    checkSchema(node.items, `${where}.items`);
+  }
+  if (node.type === "object") {
+    assert.ok(node.properties && typeof node.properties === "object", `${where}: object schema has no properties`);
+    for (const [key, value] of Object.entries(node.properties)) checkSchema(value, `${where}.${key}`);
+  }
+};
+const envToolNames = new Set();
+for (const task of tasks) {
+  const start = await benchmark.definition.environment(task).reset(task, 0);
+  for (const tool of start.tools) {
+    if (envToolNames.has(tool.name)) continue;
+    envToolNames.add(tool.name);
+    checkSchema(tool.parameters, tool.name);
+  }
+}
+assert.equal(envToolNames.size, 20);
+
 const probeTask = tasks.find((task) => task.id === "sc-fs-01");
 const badSubmissions = {
   "no submission": {},
