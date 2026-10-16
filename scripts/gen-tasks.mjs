@@ -11,6 +11,9 @@ const seed = Number(arg("--seed", 20261016));
 const split = arg("--split", "public");
 if (!["public", "hidden"].includes(split)) throw new Error("--split must be public or hidden");
 const out = arg("--out", split === "public" ? "data/tasks.jsonl" : "data/tasks.hidden.jsonl");
+// The pack exclusion and the e2e tripwire both key on "hidden" in the path, so
+// a hidden split under any other name would publish unchecked.
+if (split === "hidden" && !/(^|\/)[^/]*\.hidden\.jsonl$/.test(out)) throw new Error(`--split hidden requires --out to end in *.hidden.jsonl, got ${out}`);
 
 function mulberry32(a) {
   return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
