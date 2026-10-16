@@ -4,7 +4,7 @@ import { once } from "node:events";
 import { createServer as createNetServer } from "node:net";
 import { mkdir, mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -204,17 +204,22 @@ try {
 }
 
 // With fixtures on disk, the published tarball must never contain a hidden
-// split. Plant canaries the files field must exclude, then pack and reject
-// any listed path containing "hidden".
-const canaries = ["data/e2e-canary.hidden.jsonl", "data/.e2e-hidden"];
+// split. Plant canaries the files field must exclude - top level, nested
+// under data/, and inside dist/ - then pack and reject any listed path
+// containing "hidden".
+const canaries = ["data/e2e-canary.hidden.jsonl", "data/sub/e2e-canary.hidden.jsonl", "dist/e2e-canary.hidden.jsonl", "data/.e2e-hidden"];
 try {
-  for (const c of canaries) await writeFile(c, "canary\n");
+  for (const c of canaries) {
+    await mkdir(dirname(c), { recursive: true });
+    await writeFile(c, "canary\n");
+  }
   const packed = JSON.parse((await execFile("npm", ["pack", "--dry-run", "--json"], { maxBuffer: 5_000_000 })).stdout);
   const packedPaths = (Array.isArray(packed) ? packed : [packed]).flatMap((p) => (p.files ?? []).map((f) => f.path));
   const leaked = packedPaths.filter((p) => p.toLowerCase().includes("hidden"));
   assert.equal(leaked.length, 0, `hidden file(s) leaked into pack: ${leaked.join(", ")}`);
 } finally {
   for (const c of canaries) await unlink(c);
+  await rm("data/sub", { recursive: true, force: true });
 }
 
 // Synthetic probes pin each new grader path through score(): the scope
