@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { realpathSync } from "node:fs";
 import { delimiter, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineBenchmark, exactMatch, replay, type JsonValue, type ScriptedTurn, type Task } from "benchmark-core";
@@ -7,12 +8,17 @@ import { checkInvariant, evaluateGoal, type ReplayState } from "./grader.js";
 
 const packageRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
+// Symlinks defeat a lexical prefix check, so compare real paths; a path that
+// does not exist yet can hold no link and falls back to the lexical form.
+const real = (p: string) => { try { return realpathSync(p); } catch { return resolve(p); } };
+const packageRootReal = real(packageRoot);
+
 // API and MCP factories accept a tasks path only when it resolves inside the
 // package or inside an entry of the SC_TASKS_PATHS allow-list.
 export function resolveTasksPath(tasksPath: string): string {
-  const resolved = resolve(tasksPath);
-  const allowed = (process.env.SC_TASKS_PATHS ?? "").split(delimiter).filter(Boolean).map((p) => resolve(p));
-  const ok = resolved.startsWith(packageRoot + sep) || allowed.some((p) => resolved === p || resolved.startsWith(p + sep));
+  const resolved = real(tasksPath);
+  const allowed = (process.env.SC_TASKS_PATHS ?? "").split(delimiter).filter(Boolean).map(real);
+  const ok = resolved.startsWith(packageRootReal + sep) || allowed.some((p) => resolved === p || resolved.startsWith(p + sep));
   if (!ok) throw new Error(`tasks path is outside the package and not in SC_TASKS_PATHS: ${tasksPath}`);
   return resolved;
 }
