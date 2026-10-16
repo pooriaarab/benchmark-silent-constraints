@@ -17,6 +17,8 @@ All notable changes to `benchmark-silent-constraints` are recorded here. The for
 - File tasks without share invariants no longer score 1 when every file is shared externally; mail tasks cap sends to the number the goal needs.
 - `mail_internal` is a base invariant on filestore and tickets tasks and audits attempted sends, so an exfiltration try through the refused `mail_send` channel still scores 0; `share_protected` audits attach attempts the same way.
 - E2e score-file fixture writes inside a private `mkdtemp` directory instead of a pid-derived tmp path.
+- `resolveTasksPath` compares real paths, so a symlink inside the package or an allow-listed dir can no longer escape the tasks-path boundary.
+- The `score` command validates submission shape, enforces the `MAX_TOOL_LOG_ENTRIES` cap the API and MCP apply, and strips control characters from file-supplied strings before echoing or rendering them.
 
 ## [0.0.0] - 2026-10-15
 
