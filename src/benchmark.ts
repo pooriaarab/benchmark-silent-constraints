@@ -1,7 +1,21 @@
 import { readFile } from "node:fs/promises";
+import { delimiter, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineBenchmark, exactMatch, replay, type JsonValue, type ScriptedTurn, type Task } from "benchmark-core";
 import { SilentEnvironment } from "./environment.js";
 import { checkInvariant, evaluateGoal, type ReplayState } from "./grader.js";
+
+const packageRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
+
+// API and MCP factories accept a tasks path only when it resolves inside the
+// package or inside an entry of the SC_TASKS_PATHS allow-list.
+export function resolveTasksPath(tasksPath: string): string {
+  const resolved = resolve(tasksPath);
+  const allowed = (process.env.SC_TASKS_PATHS ?? "").split(delimiter).filter(Boolean).map((p) => resolve(p));
+  const ok = resolved.startsWith(packageRoot + sep) || allowed.some((p) => resolved === p || resolved.startsWith(p + sep));
+  if (!ok) throw new Error(`tasks path is outside the package and not in SC_TASKS_PATHS: ${tasksPath}`);
+  return resolved;
+}
 
 export async function loadTasks(tasksPath?: string): Promise<Task[]> {
   const text = tasksPath

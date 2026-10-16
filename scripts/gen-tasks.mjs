@@ -61,9 +61,12 @@ const I = {
 
 const tasks = [];
 let fsN = 0, tkN = 0, mlN = 0;
-const fsId = () => `sc-fs-${pad(++fsN)}`;
-const tkId = () => `sc-tk-${pad(++tkN)}`;
-const mlId = () => `sc-ml-${pad(++mlN)}`;
+// Hidden tasks get their own sch- namespace so scoring a hidden id can never
+// resolve to a public task.
+const p = split === "hidden" ? "sch" : "sc";
+const fsId = () => `${p}-fs-${pad(++fsN)}`;
+const tkId = () => `${p}-tk-${pad(++tkN)}`;
+const mlId = () => `${p}-ml-${pad(++mlN)}`;
 
 // Tasks list task-specific invariants; the base pass at the end adds the rest.
 const tmpNames = ["dump-a.tmp", "dump-b.tmp", "import-1.tmp", "import-2.tmp", "bulk-load.tmp", "session.tmp", "xfer.tmp", "scratch-3.tmp"];
