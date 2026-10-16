@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFile as execFileCallback, spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer as createNetServer } from "node:net";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -90,17 +90,24 @@ for (const task of tasks) {
   blanketViolations++;
 }
 
-// A hidden split must diverge structurally and run through --tasks. It is
-// written to tmpdir so e2e never overwrites a real data/tasks.hidden.jsonl.
-const hiddenPath = join(tmpdir(), `sc-tasks-hidden-${process.pid}.jsonl`);
-await execFile(process.execPath, ["scripts/gen-tasks.mjs", "--seed", "7", "--split", "hidden", "--out", hiddenPath]);
-const hid = (await readFile(hiddenPath, "utf8")).trim().split("\n").map((l) => JSON.parse(l));
-assert.equal(hid.length, tasks.length);
-const samePrompt = hid.filter((t) => tasks.some((p) => p.prompt === t.prompt)).length;
-const sameSolution = hid.filter((t) => tasks.some((p) => JSON.stringify(p.metadata.solution) === JSON.stringify(t.metadata.solution))).length;
-assert.ok(samePrompt <= 5 && sameSolution <= 5, `hidden split reuses ${samePrompt} prompts and ${sameSolution} solutions`);
-const hiddenCli = await execFile(process.execPath, ["dist/cli.js", "run", "--model", "offline", "--provider", "mock", "--tasks", hiddenPath, "--json"], { maxBuffer: 1_000_000 });
-assert.equal(JSON.parse(hiddenCli.stdout).rows.length, 40);
+// A hidden split must diverge structurally and run through --tasks. It lives
+// in a private mkdtemp dir so e2e never overwrites a real
+// data/tasks.hidden.jsonl, leaves no world-readable copy, and no other local
+// user can pre-plant a symlink at the path.
+const hiddenDir = await mkdtemp(join(tmpdir(), "sc-e2e-"));
+const hiddenPath = join(hiddenDir, "tasks.hidden.jsonl");
+try {
+  await execFile(process.execPath, ["scripts/gen-tasks.mjs", "--seed", "7", "--split", "hidden", "--out", hiddenPath]);
+  const hid = (await readFile(hiddenPath, "utf8")).trim().split("\n").map((l) => JSON.parse(l));
+  assert.equal(hid.length, tasks.length);
+  const samePrompt = hid.filter((t) => tasks.some((p) => p.prompt === t.prompt)).length;
+  const sameSolution = hid.filter((t) => tasks.some((p) => JSON.stringify(p.metadata.solution) === JSON.stringify(t.metadata.solution))).length;
+  assert.ok(samePrompt <= 5 && sameSolution <= 5, `hidden split reuses ${samePrompt} prompts and ${sameSolution} solutions`);
+  const hiddenCli = await execFile(process.execPath, ["dist/cli.js", "run", "--model", "offline", "--provider", "mock", "--tasks", hiddenPath, "--json"], { maxBuffer: 1_000_000 });
+  assert.equal(JSON.parse(hiddenCli.stdout).rows.length, 40);
+} finally {
+  await rm(hiddenDir, { recursive: true, force: true });
+}
 
 // With fixtures on disk, the published tarball must never contain a hidden
 // split. Plant canaries the files field must exclude, then pack and reject
@@ -113,7 +120,7 @@ try {
   const leaked = packedPaths.filter((p) => p.toLowerCase().includes("hidden"));
   assert.equal(leaked.length, 0, `hidden file(s) leaked into pack: ${leaked.join(", ")}`);
 } finally {
-  for (const c of canaries) await unlink(c).catch(() => {});
+  for (const c of canaries) await unlink(c);
 }
 
 // Synthetic probes pin each new grader path through score(): the scope
