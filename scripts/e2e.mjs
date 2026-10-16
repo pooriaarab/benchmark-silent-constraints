@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFile as execFileCallback, spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer as createNetServer } from "node:net";
-import { mkdir, mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
@@ -178,6 +178,16 @@ try {
   assert.equal((await hiddenScore.json()).score, 1);
   const wrongSplit = await hiddenApi(new Request("http://x/v1/score", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ taskId: tasks[0].id, submission: { toolLog: hid[0].metadata.solution } }) }));
   assert.equal(wrongSplit.status, 404, "hidden-split API accepted a public task id");
+  // A symlink inside the allow-listed dir must not escape the boundary.
+  const escapeDir = await mkdtemp(join(tmpdir(), "sc-e2e-out-"));
+  try {
+    const escapeFile = join(escapeDir, "escape.hidden.jsonl");
+    await writeFile(escapeFile, "{}\n");
+    await symlink(escapeFile, join(hiddenDir, "link.hidden.jsonl"));
+    assert.throws(() => createApi(join(hiddenDir, "link.hidden.jsonl")), /SC_TASKS_PATHS/, "factory followed a symlink out of the allow-list");
+  } finally {
+    await rm(escapeDir, { recursive: true, force: true });
+  }
   // A hidden split under a name without "hidden" would slip past both pack
   // guards; the generator must refuse it outright.
   const stray = await execFile(process.execPath, ["scripts/gen-tasks.mjs", "--split", "hidden", "--out", join(hiddenDir, "holdout.jsonl")]).then(() => null, (e) => e);
