@@ -101,6 +101,22 @@ const sameSolution = hid.filter((t) => tasks.some((p) => JSON.stringify(p.metada
 assert.ok(samePrompt <= 5 && sameSolution <= 5, `hidden split reuses ${samePrompt} prompts and ${sameSolution} solutions`);
 const hiddenCli = await execFile(process.execPath, ["dist/cli.js", "run", "--model", "offline", "--provider", "mock", "--tasks", hiddenPath, "--json"], { maxBuffer: 1_000_000 });
 assert.equal(JSON.parse(hiddenCli.stdout).rows.length, 40);
+assert.ok(hid.every((t) => t.id.startsWith("sch-")), "hidden task ids must carry the sch- prefix");
+const publicIds = new Set(tasks.map((t) => t.id));
+assert.ok(hid.every((t) => !publicIds.has(t.id)), "hidden task ids collide with public ids");
+
+// The API factory only accepts task paths inside the package or in the
+// SC_TASKS_PATHS allow-list, and it scores hidden tasks by their own ids.
+const { createApi } = await import("../dist/api.js");
+assert.throws(() => createApi(hiddenPath), /SC_TASKS_PATHS/);
+process.env.SC_TASKS_PATHS = tmpdir();
+const hiddenApi = createApi(hiddenPath);
+const hiddenScore = await hiddenApi(new Request("http://x/v1/score", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ taskId: hid[0].id, submission: { toolLog: hid[0].metadata.solution } }) }));
+assert.equal(hiddenScore.status, 200);
+assert.equal((await hiddenScore.json()).score, 1);
+const wrongSplit = await hiddenApi(new Request("http://x/v1/score", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ taskId: tasks[0].id, submission: { toolLog: hid[0].metadata.solution } }) }));
+assert.equal(wrongSplit.status, 404, "hidden-split API accepted a public task id");
+delete process.env.SC_TASKS_PATHS;
 
 // With fixtures on disk, the published tarball must never contain a hidden
 // split. Plant canaries the files field must exclude, then pack and reject
@@ -195,6 +211,8 @@ try {
   const shown = await get("/v1/tasks/sc-fs-01"); assert.equal(shown.value.task.id, "sc-fs-01");
   const score = await fetch(`${base}/v1/score`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ taskId: "sc-fs-01", submission: report.rows[0].submission }) });
   routes["POST /v1/score"] = score.status; assert.equal(score.status, 200);
+  const unknown = await fetch(`${base}/v1/score`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ taskId: "sch-fs-01", submission: { toolLog: [] } }) });
+  assert.equal(unknown.status, 404, "api accepted an unknown task id");
   assert.equal((await get("/v1/provenance")).response.status, 200);
   assert.equal((await get("/v1/index-entry")).value.task_count, 40);
 } finally { if (server.exitCode === null) { server.kill("SIGTERM"); await once(server, "exit"); } }
@@ -214,6 +232,8 @@ try {
     const result = await client.callTool({ name, arguments: args });
     if (name === "run_benchmark") assert.equal(result.isError, true); else assert.notEqual(result.isError, true);
   }
+  const unknownTask = await client.callTool({ name: "score_answer", arguments: { taskId: "sch-fs-01", submission: { toolLog: [] } } });
+  assert.equal(unknownTask.isError, true, "mcp scored an unknown task id");
 } finally { await client.close(); }
 
 const artifact = { task_count: report.rows.length, scores: report.rows.map((row) => row.score), clean_solutions: cleanSolutions, goal_met_but_violated: goalMetButViolated, goal_unmet: goalUnmet, blanket_violations: blanketViolations, route_status_codes: routes, tool_names: toolNames };

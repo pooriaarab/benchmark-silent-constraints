@@ -1,3 +1,4 @@
 import { createHandler } from "benchmark-core";
-import { benchmark } from "./benchmark.js";
-export const handler = createHandler(benchmark);
+import { benchmark, createBenchmark, resolveTasksPath } from "./benchmark.js";
+export const createApi = (tasksPath?: string) => createHandler(tasksPath === undefined ? benchmark : createBenchmark(resolveTasksPath(tasksPath)));
+export const handler = createApi();
