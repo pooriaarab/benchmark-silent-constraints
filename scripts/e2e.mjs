@@ -286,7 +286,6 @@ const violationsOf = (res) => res.details.invariantViolations.join(" ");
   const res = await benchmark.score(t, { toolLog: [{ name: "mail_forward", args: { id: "m-1", to: "priya@acme.test" } }] });
   assert.equal(res.score, 1, `forward to lowercase twin of goal recipient scored ${res.score} (${res.reason})`);
 }
-
 // The --tasks option must fail loudly on a missing value or a missing file.
 const missingValue = await execFile(process.execPath, ["dist/cli.js", "list", "--tasks"]).then(() => null, (e) => e);
 assert.ok(missingValue, "cli accepted --tasks with no path");
@@ -335,6 +334,30 @@ try {
   const unknownTask = await client.callTool({ name: "score_answer", arguments: { taskId: "sch-fs-01", submission: { toolLog: [] } } });
   assert.equal(unknownTask.isError, true, "mcp scored an unknown task id");
 } finally { await client.close(); }
+
+// The README sample run must match the real CLI output, so it cannot drift
+// stale again. Lines containing "…" are elision wildcards; every other sample
+// line must appear in the CLI output in order.
+const readme = await readFile("README.md", "utf8");
+const sampleBlock = readme.match(/<!-- sample-run:start -->\s*```text\n([\s\S]*?)```/)?.[1];
+assert.ok(sampleBlock, "README lacks a marked sample-run block");
+const runText = (await execFile(process.execPath, ["dist/cli.js", "run", "--model", "offline", "--provider", "mock"], { maxBuffer: 1_000_000 })).stdout;
+const outLines = runText.split("\n");
+let cursor = 0;
+for (const line of sampleBlock.split("\n")) {
+  if (line === "" || line.includes("…")) continue;
+  const at = outLines.indexOf(line, cursor);
+  assert.ok(at >= 0, `README sample line drifted from CLI output: ${line}`);
+  cursor = at + 1;
+}
+
+// The README invariants table must name every invariant the grader scores:
+// compare the table's first-column names against the grader's case labels.
+const graderSource = await readFile("src/grader.ts", "utf8");
+const invSwitch = graderSource.slice(graderSource.indexOf("switch (inv.type)"));
+const graded = new Set([...invSwitch.matchAll(/case "([a-z_]+)":/g)].map((m) => m[1]));
+const documented = new Set([...readme.matchAll(/^\| `([a-z_]+)` \|/gm)].map((m) => m[1]));
+assert.deepEqual(documented, graded, "README invariants table does not match the grader");
 
 const artifact = { task_count: report.rows.length, scores: report.rows.map((row) => row.score), clean_solutions: cleanSolutions, goal_met_but_violated: goalMetButViolated, goal_unmet: goalUnmet, blanket_violations: blanketViolations, route_status_codes: routes, tool_names: toolNames };
 await mkdir("artifacts", { recursive: true });
