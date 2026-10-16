@@ -105,6 +105,10 @@ try {
   assert.ok(samePrompt <= 5 && sameSolution <= 5, `hidden split reuses ${samePrompt} prompts and ${sameSolution} solutions`);
   const hiddenCli = await execFile(process.execPath, ["dist/cli.js", "run", "--model", "offline", "--provider", "mock", "--tasks", hiddenPath, "--json"], { maxBuffer: 1_000_000 });
   assert.equal(JSON.parse(hiddenCli.stdout).rows.length, 40);
+  // A hidden split under a name without "hidden" would slip past both pack
+  // guards; the generator must refuse it outright.
+  const stray = await execFile(process.execPath, ["scripts/gen-tasks.mjs", "--split", "hidden", "--out", join(hiddenDir, "holdout.jsonl")]).then(() => null, (e) => e);
+  assert.ok(stray, "gen-tasks wrote a hidden split to a non-hidden filename");
 } finally {
   await rm(hiddenDir, { recursive: true, force: true });
 }
