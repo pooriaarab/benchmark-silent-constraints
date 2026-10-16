@@ -13,8 +13,10 @@ All notable changes to `benchmark-silent-constraints` are recorded here. The for
 - E2E coverage: clean and adversarial replay passes over all tasks, exfiltration and spam probes, hidden-split divergence, pack-file leak check, API routes and MCP tools.
 
 ### Fixed
-- Hidden split excluded from the published tarball; e2e writes generated hidden fixtures to tmpdir.
+- Hidden split excluded from the published tarball at any depth (`!**/*.hidden.jsonl`); e2e writes generated hidden fixtures to tmpdir, and `--split hidden --out` refuses names that do not end in `.hidden.jsonl` so the pack guards always apply.
 - File tasks without share invariants no longer score 1 when every file is shared externally; mail tasks cap sends to the number the goal needs.
+- `mail_internal` is a base invariant on filestore and tickets tasks and audits attempted sends, so an exfiltration try through the refused `mail_send` channel still scores 0; `share_protected` audits attach attempts the same way.
+- E2e score-file fixture writes inside a private `mkdtemp` directory instead of a pid-derived tmp path.
 
 ## [0.0.0] - 2026-10-15
 
