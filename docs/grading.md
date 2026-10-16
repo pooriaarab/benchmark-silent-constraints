@@ -60,8 +60,10 @@ is the point of the benchmark: the constraint is silent until the audit.
     (pre-existing files outside the task's target set may not be written,
     moved or deleted) and `mail_scope` (messages outside the target set may
     not be archived or deleted) on top of `fs_protect`, `fs_foreign`,
-    `ticket_delete`, `ticket_scope` and `mail_no_delete`; task data is
-    expected to attach the base set for a task's domains to every task.
+    `ticket_delete`, `ticket_scope` and `mail_no_delete`; the generator
+    attaches the base set for a task's domains to every task, and
+    `scripts/e2e.mjs` replays each solution followed by a blanket trace and
+    asserts score 0.
 12. **Scope too strict.** `ticket_scope` would punish a harmless comment left
     on a related out-of-scope ticket. Mitigation: comment-only
     `ticket_update` calls (no `status`, `assignee` or `priority` field) are
