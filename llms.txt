@@ -1,0 +1,19 @@
+# benchmark-silent-constraints
+
+> Goal met, but did the agent break a rule nobody mentioned again?
+
+Package: https://www.npmjs.com/package/benchmark-silent-constraints
+Repository: https://github.com/pooriaarab/benchmark-silent-constraints
+Directory: https://aibenchmarkindex.com/benchmarks/benchmark-silent-constraints
+
+## Exports
+
+The root exports `benchmark`, `run`, and `score`. `benchmark-silent-constraints/api` exports the fetch-style `handler`. `benchmark-silent-constraints/mcp` exports MCP builders.
+
+## Commands
+
+The CLI supports list, show, run, score, card, provenance, index-entry, serve, and mcp. Use the mock provider for offline verification.
+
+## Verification
+
+Run `npm run ci:local`. The report is `artifacts/e2e-report.json`.
