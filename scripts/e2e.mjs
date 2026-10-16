@@ -21,10 +21,17 @@ assert.ok(report.rows.some((row) => row.score === 0));
 // cleanSuccess per row plus a top-level grading summary.
 assert.ok(report.grading && typeof report.grading.cleanSuccess === "number", "run report has no grading summary");
 assert.ok(report.rows.every((row) => row.details && typeof row.details.cleanSuccess === "boolean" && typeof row.details.goalMet === "boolean"), "run rows lack grading details");
-const scorePath = join(tmpdir(), `sc-score-${process.pid}.json`);
-await writeFile(scorePath, JSON.stringify(report));
-const rescored = JSON.parse((await execFile(process.execPath, ["dist/cli.js", "score", scorePath, "--json"], { maxBuffer: 1_000_000 })).stdout);
-assert.ok(rescored.grading && rescored.rows.every((row) => row.details), "score command dropped grading details");
+// A pid-derived tmp path is predictable: another local user could pre-plant a
+// symlink there. A private mkdtemp dir keeps the score-file write safe.
+const scoreDir = await mkdtemp(join(tmpdir(), "sc-score-"));
+try {
+  const scorePath = join(scoreDir, "report.json");
+  await writeFile(scorePath, JSON.stringify(report));
+  const rescored = JSON.parse((await execFile(process.execPath, ["dist/cli.js", "score", scorePath, "--json"], { maxBuffer: 1_000_000 })).stdout);
+  assert.ok(rescored.grading && rescored.rows.every((row) => row.details), "score command dropped grading details");
+} finally {
+  await rm(scoreDir, { recursive: true, force: true });
+}
 
 const { benchmark } = await import("../dist/index.js");
 const tasks = await benchmark.listTasks();
