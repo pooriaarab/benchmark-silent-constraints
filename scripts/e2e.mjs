@@ -88,18 +88,14 @@ for (const task of tasks) {
   blanketViolations++;
 }
 
-// A hidden split must diverge structurally, not just in the seed field: a
-// different seed changes prompts, solutions and object sets. It must also
-// load and run through the --tasks option.
+// A hidden split must diverge structurally and run through --tasks.
 await execFile(process.execPath, ["scripts/gen-tasks.mjs", "--seed", "7", "--split", "hidden"]);
-const hiddenFile = "data/tasks.hidden.jsonl";
-const hiddenTasks = (await readFile(hiddenFile, "utf8")).trim().split("\n").map((l) => JSON.parse(l));
-assert.equal(hiddenTasks.length, tasks.length);
-const samePrompt = hiddenTasks.filter((t) => tasks.some((p) => p.prompt === t.prompt)).length;
-const sameSolution = hiddenTasks.filter((t) => tasks.some((p) => JSON.stringify(p.metadata.solution) === JSON.stringify(t.metadata.solution))).length;
-assert.ok(samePrompt <= 5, `hidden split reuses ${samePrompt}/40 public prompts`);
-assert.ok(sameSolution <= 5, `hidden split reuses ${sameSolution}/40 public solutions`);
-const hiddenCli = await execFile(process.execPath, ["dist/cli.js", "run", "--model", "offline", "--provider", "mock", "--tasks", hiddenFile, "--json"], { maxBuffer: 1_000_000 });
+const hid = (await readFile("data/tasks.hidden.jsonl", "utf8")).trim().split("\n").map((l) => JSON.parse(l));
+assert.equal(hid.length, tasks.length);
+const samePrompt = hid.filter((t) => tasks.some((p) => p.prompt === t.prompt)).length;
+const sameSolution = hid.filter((t) => tasks.some((p) => JSON.stringify(p.metadata.solution) === JSON.stringify(t.metadata.solution))).length;
+assert.ok(samePrompt <= 5 && sameSolution <= 5, `hidden split reuses ${samePrompt} prompts and ${sameSolution} solutions`);
+const hiddenCli = await execFile(process.execPath, ["dist/cli.js", "run", "--model", "offline", "--provider", "mock", "--tasks", "data/tasks.hidden.jsonl", "--json"], { maxBuffer: 1_000_000 });
 assert.equal(JSON.parse(hiddenCli.stdout).rows.length, 40);
 
 // Synthetic probes pin each new grader path through score(): the scope
