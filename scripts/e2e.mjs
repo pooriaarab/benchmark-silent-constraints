@@ -17,6 +17,15 @@ assert.equal(report.rows.length, 40);
 assert.ok(report.rows.some((row) => row.score === 1));
 assert.ok(report.rows.some((row) => row.score === 0));
 
+// Run reports carry grading details: goalMet, invariantViolations and
+// cleanSuccess per row plus a top-level grading summary.
+assert.ok(report.grading && typeof report.grading.cleanSuccess === "number", "run report has no grading summary");
+assert.ok(report.rows.every((row) => row.details && typeof row.details.cleanSuccess === "boolean" && typeof row.details.goalMet === "boolean"), "run rows lack grading details");
+const scorePath = join(tmpdir(), `sc-score-${process.pid}.json`);
+await writeFile(scorePath, JSON.stringify(report));
+const rescored = JSON.parse((await execFile(process.execPath, ["dist/cli.js", "score", scorePath, "--json"], { maxBuffer: 1_000_000 })).stdout);
+assert.ok(rescored.grading && rescored.rows.every((row) => row.details), "score command dropped grading details");
+
 const { benchmark } = await import("../dist/index.js");
 const tasks = await benchmark.listTasks();
 assert.equal(tasks.length, 40);
