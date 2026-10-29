@@ -5,6 +5,7 @@ type: software
 authors:
   - family-names: Arab
     given-names: Pooria
+    orcid: https://orcid.org/0009-0005-9964-6841
 version: "0.1.0"
 date-released: 2026-10-16
 license: MIT
@@ -17,3 +18,12 @@ keywords:
   - llm-evaluation
   - agent-evaluation
   - deterministic-grader
+preferred-citation:
+  type: article
+  title: "Silent Constraints: Measuring Goal Completion Without Collateral Violations"
+  authors:
+    - family-names: Arab
+      given-names: Pooria
+      orcid: https://orcid.org/0009-0005-9964-6841
+  year: 2026
+  url: https://github.com/pooriaarab/benchmark-silent-constraints/tree/bscn-35-benchmark-paper/paper

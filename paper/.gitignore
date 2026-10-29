@@ -1,0 +1,8 @@
+*.pdf
+*.log
+*.aux
+*.bbl
+*.blg
+*.out
+neurips_2026.sty
+.style.zip

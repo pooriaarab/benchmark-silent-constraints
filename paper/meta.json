@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "title": "Silent Constraints: Measuring Goal Completion Without Collateral Violations",
+  "abstract": "An agent can complete a requested goal while damaging resources outside its authority. Silent Constraints measures this distinction with 40 synthetic episodes and deterministic audit-log replay. We report goal completion, clean success, and invariant violations separately. Privileged clean scripts achieve 40/40 clean successes; shortcut scripts achieve 38/40 goals but 0/40 clean successes. Five task-blind controls obtain no clean successes. A clearly labelled simulated population sweep varies clean-script choice and measures the resulting score response. All 107 conditions reproduce exactly across 8560 episode executions. Intervals describe hypothetical task sampling or simulated seed variation, not deployment risk. No learned model, human survey, or external validation is included.",
+  "authors": [
+    {
+      "name": "Pooria Arab",
+      "affiliation": "Independent researcher",
+      "orcid": "https://orcid.org/0009-0005-9964-6841"
+    }
+  ],
+  "license": "CC-BY-4.0",
+  "keywords": [
+    "agent evaluation",
+    "side effects",
+    "invariants",
+    "audit replay",
+    "simulated controls"
+  ],
+  "code_url": "https://github.com/pooriaarab/benchmark-silent-constraints",
+  "artifact_name": "silent-constraints-paper.pdf"
+}
