@@ -1,5 +1,7 @@
 # benchmark-silent-constraints
 
+Paper: [10.5281/zenodo.23752427](https://doi.org/10.5281/zenodo.23752427)
+
 [![npm](https://img.shields.io/npm/v/benchmark-silent-constraints)](https://www.npmjs.com/package/benchmark-silent-constraints) [![downloads](https://img.shields.io/npm/dm/benchmark-silent-constraints)](https://www.npmjs.com/package/benchmark-silent-constraints) [![license](https://img.shields.io/npm/l/benchmark-silent-constraints)](./LICENSE) [![types](https://img.shields.io/badge/TypeScript-types-3178c6)](#sdk)
 
 [AI Benchmark Index](https://private-repo-337e.com/benchmarks/benchmark-silent-constraints) · [npm](https://www.npmjs.com/package/benchmark-silent-constraints) · [API](#http-api) · [MCP](#model-context-protocol)
