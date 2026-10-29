@@ -1,0 +1,13 @@
+{
+  "title": "Silent Constraints: Measuring Goal Completion Without Collateral Violations",
+  "source_commit": "787ac0146117e7e41edc401cd0d999e32a829564",
+  "authors": [
+    {
+      "name": "Pooria Arab",
+      "affiliation": "Independent researcher",
+      "orcid": "https://orcid.org/0009-0005-9964-6841"
+    }
+  ],
+  "code_url": "https://github.com/pooriaarab/benchmark-silent-constraints",
+  "artifact_name": "silent-constraints-paper.pdf"
+}

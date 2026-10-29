@@ -1,0 +1,157 @@
+\documentclass{article}
+\input{template/layout}
+\input{generated/macros.generated}
+\title{\PaperTitle}
+\author{Pooria Arab\\Independent researcher\\ORCID: \AuthorOrcid}
+\begin{document}
+\maketitle
+\begin{abstract}\PaperAbstract\end{abstract}
+\section{Why this matters}
+A requested outcome rarely defines every permitted action. An assistant asked to clear storage must preserve protected files. An assistant asked to resolve tickets must leave unrelated work alone. An assistant asked to send a report must choose an authorized recipient. Each task combines a positive goal with boundaries on how the agent may reach it. A completion score can miss those boundaries.
+
+Silent Constraints evaluates this gap through state changes and action histories. The construct is \emph{constrained task execution}: achieving a stated goal while preserving task-specific invariants. An invariant is a rule that must remain satisfied during the episode. The benchmark separates goal completion from clean success. Clean success requires both the goal and the absence of recorded violations. The intended use is diagnosis of agent behavior under bounded authority, not certification of a deployed system.
+
+The word ``silent'' requires care. These tasks do not hide every relevant fact. The environment tells agents to inspect resources. Listings reveal ownership, protection flags, teams, and labels. Some prompts also state scope restrictions. What remains implicit is the full formal conjunction used by the evaluator. The benchmark therefore measures action selection under partly implicit rules. It does not isolate inference from completely unstated preferences.
+
+This paper makes a narrow contribution. It describes an executable benchmark, validates its response to diagnostic controls, and studies its metric under a simulated population sweep. The clean and shortcut scripts use privileged task metadata. They establish reachable outcomes and contrast cases. They do not establish model competence. The simulated agents choose between those scripts with a programmed probability. Their results describe the measurement system under controlled inputs.
+
+The distinction matters for interpreting progress. An agent can reduce apparent failures by taking broader actions, such as deleting extra files or closing extra tickets. That change may improve goal completion while reducing respect for scope. Conversely, refusing all actions can avoid violations while leaving every goal incomplete. Reporting both components exposes these failure modes. A single safety-only or completion-only number cannot express both.
+\section{Related work}
+Tool-use benchmarks study related but distinct questions. $\tau$-bench evaluates tool-agent-user interaction with domain policies and final database states \citep{yao2024tau}. Silent Constraints retains final-state goals but also audits prohibited actions. It uses fixed synthetic episodes rather than a language-model user simulator. These choices simplify replay while reducing conversational realism.
+
+AgentDojo studies prompt injection in tool-using agents through an environment for tasks, attacks, and defenses \citep{debenedetti2024agentdojo}. Silent Constraints does not require an adversarial instruction. A benign request can produce collateral damage through an overbroad action. Injection resistance and scope preservation can overlap, but success on one does not establish success on the other.
+
+ToolEmu uses a language model to emulate tools and evaluate risks \citep{ruan2024toolemu}. This benchmark instead uses explicit state transitions and deterministic rule checks. That choice makes individual scores reproducible without a judge model. It also limits the environment to effects that the state representation supports. Social consequences, recipient intent, and downstream harm remain outside the measured state.
+
+BetterBench calls attention to benchmark quality across design, implementation, documentation, and maintenance \citep{reuel2024betterbench}. We apply that perspective through stated constructs, trivial controls, transparent intervals, and repeatable evidence. Those checks are evidence about this instrument. They do not replace independent task review or show that the instrument represents production workloads.
+
+PayBench frames delegated resource use through permitted and prohibited actions \citep{plunkett2026paybench}. We share its concern with useful action under constraints. Our paired objects are clean and shortcut trajectories on the same initial task, rather than matched safe and unsafe task variants. We do not adopt payment-specific metrics or human preference labels. The distinction keeps the claim aligned with the available tasks.
+\section{Experiment design}
+\subsection{Task, observation, action, and evaluation}
+Each episode begins with a user goal and a seeded environment. Resources include files, tickets, and messages. The agent receives tool descriptions and an instruction to inspect resources before acting. It can request listings or detailed records, then call tools that change state. The environment records the tool calls. The evaluator replays their names and arguments against a fresh initial state.
+
+This replay separates an agent's narrative from the measured outcome. A final response saying that work is complete cannot create a file, close a ticket, or send a message. Those effects require tool calls. Replaying calls also avoids trusting a submitted final-state assertion. However, replay does not prove that a submitted trace came from a live model session. Trace authenticity is a separate provenance problem.
+
+The goal evaluator checks the resulting state. Depending on the task, it checks file content or location, storage usage, ticket state, message movement, or an outgoing message. The invariant evaluator examines the initial state, final state, and audit history. This supports rules about protected resources and temporary peaks that a final-state check alone could miss.
+
+Tools generally allow an action to execute even when it violates an invariant. The evaluation then records the violation. This design measures whether an agent chooses an allowed action when enforcement is weak. It must not be interpreted as a hardened permission system. Failed calls also matter in selected disclosure checks, where attempted external communication can count even when a tool is unavailable.
+\subsection{Controls and information access}
+The study contains \TaskCount{} public tasks. The empty policy returns no text. The constant policy returns a fixed acknowledgement. Echo repeats the user prompt. Refusal declines the request. First-tool repeatedly calls the first available tool with empty arguments. These controls test whether inactivity, unsupported claims, copied instructions, or blind tool use receive credit.
+
+The packaged clean policy executes the supplied solution. The packaged shortcut policy executes the supplied shortcut. Both policies can access task metadata, including answer-bearing fields. This privilege is deliberate and must remain visible in reports. The clean policy is an executable witness that a valid solution exists. The shortcut is a diagnostic trajectory that tests the difference between goal completion and permitted execution.
+
+We execute all controls through the public episode runner and its normal scoring path. The same interface supports learned model adapters, but none are used here. We retain tool submissions, scoring details, and semantic repeat hashes. The study plan is committed before collection. This local record fixes the design order but does not provide independent external registration.
+\subsection{Paired comparison and stopping rule}
+Each policy sees the same task collection. The goal-only and clean-success outcomes are therefore paired within task. Their difference isolates the consequences of ignoring invariant violations for the submitted trajectory. It does not estimate the effect of changing an agent's prompt or adding an enforcement layer.
+
+The execution grid is fixed before collection. Every condition runs twice. Each run uses a turn limit of \TurnLimit{} and a tool-call limit of \CallLimit{}, with no retries. We stop after the full grid and check semantic equality between repeats. Repeated deterministic runs test reproducibility; they do not increase the task sample size. Infrastructure errors stop collection. Refusals, empty outputs, tool errors, and exhausted turn limits remain outcomes rather than exclusions.
+\section{Coverage}
+The collection covers file storage, ticket management, mailbox operations, and tasks that combine domains. Figure~\ref{fig:coverage} shows the exact domain combinations. These counts describe the task collection, not a random sample of operational demand. Cross-domain tasks are sparse. A pooled score can therefore conceal behavior that occurs only when authority crosses domains.
+\begin{figure}[ht]\centering
+\begin{tikzpicture}\begin{axis}[ybar,ymin=0,ylabel={Task count},xtick={1,2,3,4,5},xticklabels={Files,Tickets,Tickets/mail,Mail,Mail/files},x tick label style={rotate=20,anchor=east},bar width=18pt]
+\addplot[fill=okblue] table[x=x,y=n,col sep=comma]{figures/coverage.generated.csv};
+\end{axis}\end{tikzpicture}
+\caption{Coverage concentrates on single-domain tasks. Bars count tasks, so confidence intervals do not apply. Combined-domain labels preserve the actual task grouping.}\label{fig:coverage}
+\end{figure}
+
+File tasks include storage cleanup, movement, copying, and sharing. Ownership and protection flags constrain which resources can change. A task can also constrain the set of existing paths that may be modified. Creating a new destination differs from overwriting an unrelated existing path. This distinction matters when a plausible operation causes collateral damage at its destination.
+
+Ticket tasks use status, assignment, priority, creation, and deletion. Their scope rules distinguish the target set from other tickets. Comment-only updates can receive different treatment from state changes. A task that asks for a status change should not grant unrestricted authority over the entire ticket collection. The benchmark models that boundary explicitly.
+
+Mailbox tasks cover replies, forwarding, sending, archiving, and deletion. Relevant rules include internal recipients, confidentiality labels, limits on sends, and preservation of unrelated messages. Some tasks involve an attachment from file storage. These cases connect access to a resource with permission to disclose its contents.
+
+Table~\ref{tab:invariants} reports rule coverage. A task can contain several invariant types, so the counts overlap. Presence of a rule does not imply that the packaged shortcut triggers it. These counts therefore measure opportunities for checks, not observed failure frequency. A future coverage study should distinguish rule presence, rule activation, and failures under a specified agent distribution.
+\begin{table}[ht]\centering\input{generated/invariants.generated}
+\caption{Task coverage by invariant type. Counts overlap because each task can carry several rules.}\label{tab:invariants}\end{table}
+\section{Taxonomy of failure}
+\subsection{Protected resources and ownership}
+Protection rules identify resources that must survive a task. Ownership rules restrict mutations of resources belonging to another user. These concepts differ: a file can belong to the agent and still be protected, or belong to someone else without a protection flag. Combining the rules prevents either flag from becoming a substitute for authority.
+
+The evaluator checks mutations against the initial resource attributes. This makes an overwrite that removes a protection flag observable as a violation. The evaluator also distinguishes copying a resource from modifying its destination. A permission audit must consider both ends of a move and the destination of a copy. Looking only at the source can miss collateral overwrites.
+\subsection{Scope expansion and destructive substitution}
+Scope expansion occurs when an action changes a resource outside the target set. A broad cleanup can remove unrelated files while still reaching the storage goal. A ticket action can close unrelated work while resolving every requested ticket. A mailbox action can archive extra messages while moving every target message successfully. These trajectories demonstrate why goal satisfaction does not imply authorized execution.
+
+Destructive substitution replaces an intended operation with a different one that appears to simplify the task. Deleting a ticket is not equivalent to resolving it. Deleting a message is not equivalent to archiving it. Such actions can either fail the goal, violate an invariant, or do both. Reporting those dimensions separately avoids describing every failed shortcut as a pure safety failure.
+\subsection{Disclosure and communication limits}
+Disclosure checks concern recipients, protected attachments, and confidentiality labels. External communication can be forbidden even if the requested deliverable reaches an internal recipient. Extra copied recipients therefore matter. The task's domain context determines whether an address is internal; appearance alone is insufficient.
+
+Protected-content checks track exact content carried through file operations. Copying protected contents to another path should not make disclosure acceptable. This mechanism catches a bounded form of content laundering. It does not implement general information-flow tracking. Rephrasing, encoding, partial excerpts, and semantic summaries require separate validation before claims extend to those transformations.
+\subsection{Resource peaks and timing}
+A storage quota can constrain peak usage rather than final usage. A trajectory might temporarily duplicate data and later delete the original. The final state can fit the quota even though the sequence exceeds it. The environment records peak usage to retain this temporal information.
+
+These checks remain limited by the modeled operations. Storage size follows the environment's string-length accounting. It is not a measurement of a real filesystem's allocated blocks or all Unicode encodings. Likewise, message sending records an event in a sandbox. It does not measure delivery, recipient access, or an irreversible external effect.
+\section{Metrics and scoring}
+Let $G_i$ indicate that task $i$ reaches its goal. Let $V_i$ indicate that its audit contains at least one invariant violation. Define clean success as $C_i=G_i(1-V_i)$. The primary statistic is the task mean of $C_i$. We also report the means of $G_i$, $V_i$, and $D_i=G_iV_i$, where $D_i$ denotes completed goals with violations.
+
+The paired scoring gap has a direct interpretation:
+\begin{equation}\overline{G}-\overline{C}=\overline{GV}=\overline{D}.\end{equation}
+Thus, the goal-only overstatement is exactly the fraction of tasks that finish with violations. This is an identity for binary outcomes, not an assumption about independence. A confidence interval for that paired difference can use the interval for $D$. No independent-sample comparison is needed.
+
+An invariant can produce several messages, and several invariants can describe the same action. The binary violation rate avoids treating those messages as independent failures. Counts of messages can help diagnosis, but they are not a severity scale. The benchmark does not establish that deleting a protected file and exceeding a send limit have equal real-world costs.
+
+For control rates, we use Wilson intervals at the \CILevel{}\% confidence level. The intervals describe hypothetical sampling of tasks resembling this fixed collection. They do not account for shared templates, task-selection bias, or uncertainty in the normative rules. The exact collection totals are known; uncertainty about a broader operational population remains much larger and unmeasured.
+
+For the simulated population sweep, the resampling unit is the simulated seed. Each seed yields a task-average score at each probability. We use \BootstrapDraws{} bootstrap draws and \CILevel{}\% percentile intervals, preserving seed pairing across probabilities for contrasts. This avoids counting all simulated episodes as independent evidence about task diversity. Endpoint intervals collapse when every simulated seed makes the same programmed choice.
+\section{Results}
+\subsection{Diagnostic controls}
+The clean scripts achieve \CleanRate{} clean success. Shortcut scripts achieve \ShortcutGoal{} goal completion but \ShortcutClean{} clean success. Their violation rate is \ShortcutViolations{}. The resulting paired gap is \ShortcutDirty{} of tasks. This gap shows how a completion-only score can conceal collateral effects in this collection.
+\begin{table}[ht]\centering\small\input{generated/controls.generated}
+\caption{Control rates with Wilson intervals. Brackets show confidence bounds in percent. Privileged clean and shortcut scripts are diagnostic controls, not learned agents.}\label{tab:controls}\end{table}
+
+The task-blind controls do not reach any goals or produce clean successes. They also produce no invariant violations in this run. Those are null results for the hypothesis that these simple behaviors receive clean-success credit. They establish only that this fixed battery does not exploit the current collection. They do not establish that no trivial shortcut exists.
+
+Figure~\ref{fig:controls} makes the two-sided interpretation visible. Inactive controls avoid violations but fail the requested work. Clean scripts reach goals within constraints. Shortcuts largely reach goals while violating rules. These cases motivate the conjunction used by the primary metric without treating all non-success as the same kind of failure.
+\begin{figure}[ht]\centering
+\begin{tikzpicture}\begin{axis}[ymin=0,ymax=1.12,ylabel={Fraction of tasks},xtick={1,2,3,4,5,6,7},xticklabels={Empty,Constant,Echo,Refuse,First tool,Clean,Shortcut},x tick label style={rotate=20,anchor=east},legend style={at={(.02,.98)},anchor=north west}]
+\addplot[only marks,mark=square*,okorange] table[x=x,y=goal,col sep=comma]{figures/controls.generated.csv};\addlegendentry{Goal met}
+\addplot[only marks,mark=*,okblue,error bars/.cd,y dir=both,y explicit] table[x=x,y=clean,y error minus=low,y error plus=high,col sep=comma]{figures/controls.generated.csv};\addlegendentry{Clean success}
+\end{axis}\end{tikzpicture}
+\caption{Goal completion hides shortcut violations. Clean-success bars show Wilson intervals; Table~\ref{tab:controls} gives intervals for every rate.}\label{fig:controls}
+\end{figure}
+\subsection{Simulated agent population sweep}
+The additional virtual experiment uses a simulated agent population. Each simulated seed defines a choice for each task. A fixed hash of seed and task identifier produces a uniform fraction. The simulated agent selects the clean script when that fraction falls below a specified probability. Otherwise it selects the shortcut. It executes the chosen trajectory through the same episode runner.
+
+This simulated mechanism varies compliance directly. It does not simulate language understanding, learning, inspection, or response to policy text. Reusing the same draws across probabilities makes the choices nested: increasing the threshold can replace a shortcut with a clean script but cannot reverse that replacement. Monotonicity is therefore built into the simulated design. It is not an empirical discovery about agents.
+
+The simulated sweep uses \SeedCount{} seeds at each configured probability. Table~\ref{tab:simulated} reports the simulated rates. Figure~\ref{fig:simulated} compares simulated clean success with simulated goal completion and violations. Goal completion changes less because most shortcuts already achieve their goals. The clean-success metric responds to the programmed change in constraint preservation.
+\begin{table}[ht]\centering\small\input{generated/simulated.generated}
+\caption{Simulated population rates with seed-bootstrap intervals. The left column is a programmed probability, not a measured rate. Endpoint intervals collapse by construction.}\label{tab:simulated}\end{table}
+\begin{figure}[ht]\centering
+\begin{tikzpicture}\begin{axis}[xmin=0,xmax=1,ymin=0,ymax=1.08,xlabel={Simulated clean-script choice probability},ylabel={Simulated task-average rate},legend style={at={(.5,-.3)},anchor=north,legend columns=3}]
+\addplot[okblue,mark=*,error bars/.cd,y dir=both,y explicit] table[x=p,y=clean,y error minus=low,y error plus=high,col sep=comma]{figures/simulated.generated.csv};\addlegendentry{Clean success}
+\addplot[okorange,mark=square*,dashed] table[x=p,y=goal,col sep=comma]{figures/simulated.generated.csv};\addlegendentry{Goal met}
+\addplot[black,mark=triangle*,dotted] table[x=p,y=violation,col sep=comma]{figures/simulated.generated.csv};\addlegendentry{Any violation}
+\end{axis}\end{tikzpicture}
+\caption{Simulated clean success changes with the programmed choice while simulated goal completion stays high. Error bars show seed-bootstrap intervals for clean success. All simulated rate intervals appear in Table~\ref{tab:simulated}.}\label{fig:simulated}
+\end{figure}
+
+Table~\ref{tab:contrasts} reports paired differences between adjacent simulated settings. The same simulated seed and task choices enter both sides of each contrast. These intervals measure variation across the finite simulated population. They must not be presented as evidence that a deployed control improves a learned model by the reported amount.
+\begin{table}[ht]\centering\input{generated/contrasts.generated}
+\caption{Adjacent simulated clean-success changes with paired seed-bootstrap intervals. Units are percentage points.}\label{tab:contrasts}\end{table}
+\subsection{Repeatability and evidential scope}
+The complete study executes \EpisodeCount{} episodes across \ConditionCount{} conditions, including repeats. Every repeated condition matches on semantic submissions and scores. Timings are excluded from the comparison. The repeated executions support deterministic behavior on this environment and input collection. They do not test independent machines, alternate runtimes, or provider integrations.
+
+The contrast between goals and clean success is the principal result. The simulated sweep adds a controlled sensitivity check. Neither result is a ranking of learned agents. No free hosted model is run, and current provider availability is not probed. No inference charges are incurred. Future learned-model results should use a separate dated protocol and preserve the same separation between goal and violation outcomes.
+\section{Roadmap}
+The first priority is independent validation of task intent. Reviewers should identify the target resources and permissible actions without seeing the solution scripts. Disagreements should remain visible, with rules revised before model comparisons. This process would test whether the formal invariants reflect a reasonable interpretation of each prompt.
+
+The second priority is information-access validation. A learned agent should receive only observations and tools that a real task grants. Expected actions and grading rules must remain outside its context. A hidden seed can change surface details, but fresh names alone do not create new task concepts. New templates and held-out combinations are needed to test transfer beyond memorized structures.
+
+The third priority is a control-layer experiment with learned agents. Useful conditions include the current discoverable-rule setting, an explicit policy statement, and tool enforcement. Such a study must distinguish attempted violations from successful prohibited effects. A layer that blocks every mutation can improve observed safety while destroying utility. Clean success and refusal behavior should therefore remain joint outcomes.
+
+Further work should broaden cross-domain tasks and temporal constraints. More complex episodes can test whether an agent carries authority limits across several resources. Longer episodes also introduce new confounders, including memory limits and tool-selection errors. Those factors should be varied separately before an aggregate score is interpreted as a general safety measure.
+\section{Caveats}
+\paragraph{Synthetic selection.} The tasks are generated from a bounded design, not sampled from production requests. Their relative frequencies reflect construction choices. Confidence intervals cannot correct an unrepresentative selection process. Domain-specific results and new task families are needed before applying the score to deployment decisions.
+\paragraph{Privileged scripts.} Clean and shortcut policies know the task metadata. They do not need to discover the relevant resources or infer the rules. The results establish the scoring distinction on known trajectories. They provide no evidence about how often a language model finds either trajectory.
+\paragraph{Programmed simulated behavior.} The simulated population uses a binary choice between fixed scripts. Its smooth response follows from that choice mechanism. It excludes partial compliance, correlated misunderstandings, recovery after errors, and adaptive attacks. Its bootstrap intervals concern simulated seed variation only.
+\paragraph{Normative ambiguity.} Ownership, protection, and scope are useful proxies for authority, but they are not complete permission systems. Some real tasks authorize exceptional changes. The present rules do not infer such exceptions from conversation. No human study validates the task interpretations in this paper.
+\paragraph{Evaluator coverage.} Replay measures the effects represented by the environment. Exact content tracking does not establish semantic confidentiality. Selected checks count attempts, while others count successful mutations. These differences are part of the scoring contract and can affect comparisons with an enforcing tool layer.
+\paragraph{Statistical limits.} Control Wilson intervals assume a hypothetical task-sampling model. Shared templates can reduce effective diversity. Simulated seed intervals do not incorporate task uncertainty. Endpoint collapse means deterministic simulated inputs, not proof of perfect safety. We use no significance tests and make no population ranking claims.
+\paragraph{External validation.} We do not test learned models, conduct a human survey, verify live tool integrations, or observe real external effects. The plan is committed locally rather than deposited in an independent registry. Reproduction confirms internal consistency, not external validity. These gaps remain explicit prerequisites for broader claims.
+\section{Citation and availability}
+Code, task definitions, generated study data, and the reproducible paper packet are available at \url{https://github.com/pooriaarab/benchmark-silent-constraints}. Cite this paper by its title and author when discussing the measurement design. Cite the software separately when identifying an implementation version. The paper and generated figures use CC-BY-4.0; the benchmark software retains its existing license.
+\section{Authors}
+Pooria Arab is an independent researcher. AI assistance supports drafting, scripting, and artifact checks. The author remains responsible for the benchmark definitions and claims. No independent human review or external experimental replication is asserted.
+\bibliographystyle{plainnat}
+\bibliography{references}
+\end{document}
